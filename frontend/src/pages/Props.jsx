@@ -1069,18 +1069,32 @@ function AIPredictionsSection() {
   const mlAllUrl = `${API_BASE}/api/props/nba/ml-predictions?market=all&tier=all&line_mode=${lineMode}`
   const { data: mlData, loading: mlLoading, error: mlError, refetch: mlRefetch } = useApi(mlUrl)
   const { data: mlAllData } = useApi((marketFilter === 'all' && tierFilter === 'all') ? null : mlAllUrl)
+  const shouldUseSimpleFallback = Boolean(mlError) || Boolean(mlData && (mlData.total || 0) === 0)
+  const simpleUrl = shouldUseSimpleFallback
+    ? `${API_BASE}/api/props/nba/predictions?market=${marketFilter}&tier=${tierFilter}`
+    : null
+  const simpleAllUrl = shouldUseSimpleFallback && !(marketFilter === 'all' && tierFilter === 'all')
+    ? `${API_BASE}/api/props/nba/predictions?market=all&tier=all`
+    : null
+  const { data: simpleData, loading: simpleLoading, error: simpleError, refetch: simpleRefetch } = useApi(simpleUrl)
+  const { data: simpleAllData } = useApi(simpleAllUrl)
   const { data: rawData, loading: rawLoading, error: rawError, refetch: rawRefetch } = useApi(`${API_BASE}/api/props/nba`)
   const { data: histData, loading: histLoading, error: histError, refetch: histRefetch } = useApi(`${API_BASE}/api/props/nba/ml-history?limit=80`)
   const { data: parlayHistData, loading: parlayHistLoading, error: parlayHistError, refetch: parlayHistRefetch } = useApi(`${API_BASE}/api/props/nba/parlays/history?limit=40`)
 
   // Derive unique games from predictions
-  const allPreds = mlData?.predictions ?? []
-  const parlayPreds = (marketFilter === 'all' && tierFilter === 'all')
-    ? allPreds
-    : (mlAllData?.predictions ?? allPreds)
+  const mlPreds = mlData?.predictions ?? []
+  const simplePreds = simpleData?.predictions ?? []
+  const usingSimpleFallback = shouldUseSimpleFallback && simplePreds.length > 0
+  const allPreds = usingSimpleFallback ? simplePreds : mlPreds
+  const parlayPreds = usingSimpleFallback
+    ? ((marketFilter === 'all' && tierFilter === 'all') ? allPreds : (simpleAllData?.predictions ?? allPreds))
+    : ((marketFilter === 'all' && tierFilter === 'all') ? allPreds : (mlAllData?.predictions ?? allPreds))
 
   const lineupReady = (p) => {
     if (lineupMode === 'off') return true
+    const hasLineupContext = p?.context && (p.context.starter_probability != null || p.context.minutes_stability != null)
+    if (!hasLineupContext) return lineupMode === 'probable'
     const starter = Number(p?.context?.starter_probability || 0)
     const stable = Number(p?.context?.minutes_stability || 0)
     const tipTs = p?.commence_time ? Date.parse(p.commence_time) : NaN
@@ -1172,6 +1186,10 @@ function AIPredictionsSection() {
       return true
     })
   }, [rawData, gameFilter, search, marketFilter])
+
+  const mlUiLoading = mlLoading || (shouldUseSimpleFallback && simpleLoading && !usingSimpleFallback)
+  const mlUiError = (!usingSimpleFallback && mlError)
+    || (shouldUseSimpleFallback && !usingSimpleFallback && simpleError)
 
   const MARKET_FILTER_OPTIONS = [
     { key: 'all',             label: 'All' },
@@ -1928,11 +1946,18 @@ function AIPredictionsSection() {
         />
 
         <button
-          onClick={() => { if (pickSource === 'ml') mlRefetch(); else rawRefetch() }}
-          disabled={pickSource === 'ml' ? mlLoading : rawLoading}
+          onClick={() => {
+            if (pickSource === 'ml') {
+              mlRefetch()
+              if (shouldUseSimpleFallback) simpleRefetch()
+            } else {
+              rawRefetch()
+            }
+          }}
+          disabled={pickSource === 'ml' ? mlUiLoading : rawLoading}
           className="ml-auto text-xs text-gray-400 hover:text-gray-200 border border-navy-600 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
         >
-          {(pickSource === 'ml' ? mlLoading : rawLoading) ? 'Loading…' : 'Refresh'}
+          {(pickSource === 'ml' ? mlUiLoading : rawLoading) ? 'Loading…' : 'Refresh'}
         </button>
 
         {lineMode === 'open' && (
@@ -2099,10 +2124,16 @@ function AIPredictionsSection() {
         )}
       </div>
 
-      {(pickSource === 'ml' ? mlLoading : rawLoading) && <Loader />}
-      {(pickSource === 'ml' ? mlError : rawError) && <ErrorBox message={pickSource === 'ml' ? mlError : rawError} />}
+      {(pickSource === 'ml' ? mlUiLoading : rawLoading) && <Loader />}
+      {(pickSource === 'ml' ? mlUiError : rawError) && <ErrorBox message={pickSource === 'ml' ? mlUiError : rawError} />}
 
-      {! (pickSource === 'ml' ? mlLoading : rawLoading) && !(pickSource === 'ml' ? mlError : rawError) && (pickSource === 'ml' ? preds.length === 0 : rawProps.length === 0) && (
+      {pickSource === 'ml' && usingSimpleFallback && (
+        <div className="bg-amber-900/20 border border-amber-800/60 rounded-xl px-3 py-2 text-xs text-amber-200">
+          ML endpoint timed out; showing fast fallback AI props for now.
+        </div>
+      )}
+
+      {! (pickSource === 'ml' ? mlUiLoading : rawLoading) && !(pickSource === 'ml' ? mlUiError : rawError) && (pickSource === 'ml' ? preds.length === 0 : rawProps.length === 0) && (
         <div className="bg-navy-800 border border-navy-700 rounded-xl p-10 text-center">
           <p className="text-4xl mb-3">🏀</p>
           <p className="text-gray-400 text-sm">No props available right now.</p>
