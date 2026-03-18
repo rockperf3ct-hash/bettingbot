@@ -17,6 +17,7 @@ Auto-resolution logic:
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -27,7 +28,14 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path("data/tracker.db")
+def _default_db_path() -> Path:
+    base = os.getenv("DATA_DIR")
+    if not base:
+        base = "/tmp/data" if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else "data"
+    return Path(base) / "tracker.db"
+
+
+DB_PATH = _default_db_path()
 
 
 def _connect() -> sqlite3.Connection:

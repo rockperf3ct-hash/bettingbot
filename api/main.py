@@ -29,8 +29,16 @@ _PROP_CLOSE_LINES_TTL = 300  # 5 minutes
 # Allow imports from project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+def _default_data_dir() -> str:
+    if os.getenv("DATA_DIR"):
+        return os.getenv("DATA_DIR", "data")
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/data"
+    return "data"
+
+
 ARTIFACTS_DIR = Path(os.getenv("ARTIFACTS_DIR", "artifacts"))
-DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
+DATA_DIR = Path(_default_data_dir())
 
 app = FastAPI(title="Sports Model API", version="1.0.0")
 

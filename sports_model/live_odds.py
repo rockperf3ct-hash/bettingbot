@@ -24,7 +24,15 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-DB_PATH = Path(os.getenv("DATA_DIR", "data")) / "tracker.db"
+def _default_data_dir() -> str:
+    if os.getenv("DATA_DIR"):
+        return os.getenv("DATA_DIR", "data")
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/data"
+    return "data"
+
+
+DB_PATH = Path(_default_data_dir()) / "tracker.db"
 
 
 @contextmanager

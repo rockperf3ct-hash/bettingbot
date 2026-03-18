@@ -15,13 +15,21 @@ bet_type: 'moneyline', 'spread', 'total_over', 'total_under', 'draw'
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path("data/tracker.db")
+def _default_db_path() -> Path:
+    base = os.getenv("DATA_DIR")
+    if not base:
+        base = "/tmp/data" if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else "data"
+    return Path(base) / "tracker.db"
+
+
+DB_PATH = _default_db_path()
 
 
 def _connect() -> sqlite3.Connection:
