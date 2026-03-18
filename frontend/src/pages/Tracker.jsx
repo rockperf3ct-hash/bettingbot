@@ -7,7 +7,7 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine,
 } from 'recharts'
 
-const API = 'http://localhost:8000'
+const API = import.meta.env.VITE_API_BASE || ''
 
 async function apiFetch(path, method = 'GET', body = null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } }

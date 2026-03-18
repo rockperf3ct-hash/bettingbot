@@ -3,7 +3,7 @@ import { useApi } from '../hooks/useApi'
 import Loader from '../components/Loader'
 import ErrorBox from '../components/ErrorBox'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 const TIER_STYLES = {
   Strong:   'bg-green-900/60 text-green-300 border border-green-700',

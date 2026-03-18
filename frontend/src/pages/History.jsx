@@ -11,7 +11,7 @@ import {
   ReferenceLine, Legend,
 } from 'recharts'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 function pct(v, dec = 1) { return v == null ? '—' : (Number(v) * 100).toFixed(dec) + '%' }
 function num(v, dec = 0)  { return v == null ? '—' : Number(v).toFixed(dec) }

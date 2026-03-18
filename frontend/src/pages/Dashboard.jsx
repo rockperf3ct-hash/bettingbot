@@ -9,7 +9,7 @@ import { useBetSlip } from '../App'
 import Loader from '../components/Loader'
 import ErrorBox from '../components/ErrorBox'
 
-const API = 'http://localhost:8000'
+const API = import.meta.env.VITE_API_BASE || ''
 
 const SPORT_META = {
   soccer: { icon: '⚽', label: 'Soccer',     order: 1 },

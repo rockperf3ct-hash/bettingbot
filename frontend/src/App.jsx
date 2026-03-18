@@ -13,6 +13,8 @@ import Props      from './pages/Props'
 import TestLiveCourt from './pages/TestLiveCourt'
 import { useTheme } from './hooks/useTheme'
 
+const API_BASE = import.meta.env.VITE_API_BASE || ''
+
 // ---------------------------------------------------------------------------
 // Bet Slip Context — shared across entire app
 // ---------------------------------------------------------------------------
@@ -88,7 +90,7 @@ function BetSlipPanel() {
       const stake = parseFloat(stakes[i]) || 0
       if (!stake) continue
       try {
-        const r = await fetch('http://localhost:8000/api/tracker/bets', {
+        const r = await fetch(`${API_BASE}/api/tracker/bets`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

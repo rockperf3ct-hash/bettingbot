@@ -6,7 +6,7 @@ import { useApi } from '../hooks/useApi'
 import Loader from '../components/Loader'
 import ErrorBox from '../components/ErrorBox'
 
-const API = 'http://localhost:8000'
+const API = import.meta.env.VITE_API_BASE || ''
 
 async function post(path, body) {
   const r = await fetch(API + path, {

@@ -12,7 +12,7 @@ import Loader from '../components/Loader'
 import ErrorBox from '../components/ErrorBox'
 import { useBetSlip } from '../App'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 // Soccer sport-key options
 const SOCCER_SPORT_KEYS = [
