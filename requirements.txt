@@ -1,8 +1,2 @@
-pandas>=2.2.0
-numpy>=1.26.0
-scikit-learn>=1.4.0
-joblib>=1.3.0
-python-dotenv>=1.0.0
-requests>=2.31.0
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
+# Intentionally minimal at repo root for Vercel monorepo builds.
+# Runtime API dependencies are resolved from api/requirements.txt.
