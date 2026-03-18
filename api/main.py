@@ -1067,6 +1067,10 @@ _ML_PROP_TTL = 1800
 _ML_MARKETS = {"player_points", "player_rebounds", "player_assists", "player_threes"}
 
 
+def _is_serverless_runtime() -> bool:
+    return bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+
+
 @app.get("/api/props/nba/ml-predictions")
 def nba_prop_ml_predictions(market: str = "all", tier: str = "all", min_edge: float = 0.0, line_mode: str = "open"):
     """
@@ -1089,7 +1093,15 @@ def nba_prop_ml_predictions(market: str = "all", tier: str = "all", min_edge: fl
             from sports_model.nba_stats import predict_prop, get_player_game_log
             market_cal = _market_calibration_factors()
 
+            serverless = _is_serverless_runtime()
+            max_events = int(os.getenv("NBA_ML_MAX_EVENTS", "3" if serverless else "12"))
+            max_props_per_event = int(os.getenv("NBA_ML_MAX_PROPS_PER_EVENT", "18" if serverless else "120"))
+            max_total_props = int(os.getenv("NBA_ML_MAX_TOTAL_PROPS", "72" if serverless else "600"))
+            sleep_secs = 0.0 if serverless else 0.05
+
             events = get_nba_event_ids()
+            if max_events > 0:
+                events = events[:max_events]
             raw: list[dict] = []
             seen: set[str] = set()
 
@@ -1098,6 +1110,8 @@ def nba_prop_ml_predictions(market: str = "all", tier: str = "all", min_edge: fl
                     props = fetch_nba_player_props(ev["event_id"], ev["home_team"], ev["away_team"])
                 else:
                     props = fetch_nba_player_props_open(ev["event_id"], ev["home_team"], ev["away_team"])
+                if max_props_per_event > 0:
+                    props = props[:max_props_per_event]
                 for prop in props:
                     mkt = prop.get("market", "")
                     if mkt not in _ML_MARKETS:
@@ -1130,11 +1144,12 @@ def nba_prop_ml_predictions(market: str = "all", tier: str = "all", min_edge: fl
                         opp_odds = ev.get("home_odds")
                     else:
                         inferred_team = None
-                        try:
-                            gl = get_player_game_log(player, n_games=2)
-                            inferred_team = next((g.get("team") for g in gl if g.get("team")), None)
-                        except Exception:
-                            inferred_team = None
+                        if not serverless:
+                            try:
+                                gl = get_player_game_log(player, n_games=2)
+                                inferred_team = next((g.get("team") for g in gl if g.get("team")), None)
+                            except Exception:
+                                inferred_team = None
 
                         inf_norm = _norm(inferred_team)
                         if inf_norm and inf_norm == home_norm:
@@ -1198,7 +1213,12 @@ def nba_prop_ml_predictions(market: str = "all", tier: str = "all", min_edge: fl
                     pred["draftkings_over"]  = prop.get("draftkings_over")
                     pred["draftkings_under"] = prop.get("draftkings_under")
                     raw.append(pred)
-                    _time_module.sleep(0.05)  # gentle rate limit
+                    if sleep_secs:
+                        _time_module.sleep(sleep_secs)  # gentle rate limit
+                    if max_total_props > 0 and len(raw) >= max_total_props:
+                        break
+                if max_total_props > 0 and len(raw) >= max_total_props:
+                    break
 
             raw.sort(key=lambda p: p["confidence"], reverse=True)
             if raw:
